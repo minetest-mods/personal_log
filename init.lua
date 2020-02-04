@@ -239,7 +239,6 @@ local detached_callbacks = {
 }
 
 local item_invs = {}
-local function item_formspec(player_name, label, listname)
 local function ensure_detached_inventory(player_name)
 	if item_invs[player_name] or not(default_modpath or ccompass_modpath) then
 		return
@@ -421,8 +420,10 @@ local function on_player_receive_fields(player, fields, update_callback)
 	end
 
 	if fields.copy_to then
-		minetest.show_formspec(player_name, "personal_log:item",
-			item_formspec(player_name, S("Copy log to blank book:"), "write_book"))
+		if state.entry_counts[state.category] ~= 0 then
+			minetest.show_formspec(player_name, "personal_log:item",
+				item_formspec(player_name, S("Copy log to blank book:"), "write_book"))
+		end
 		return
 	end
 	if fields.copy_from then
@@ -431,8 +432,10 @@ local function on_player_receive_fields(player, fields, update_callback)
 		return
 	end
 	if fields.set_ccompass then
-		minetest.show_formspec(player_name, "personal_log:item",
-			item_formspec(player_name, S("Set a compass to this location:"), "set_ccompass"))
+		if state.entry_counts[state.category] ~= 0 then
+			minetest.show_formspec(player_name, "personal_log:item",
+				item_formspec(player_name, S("Set a compass to this location:"), "set_ccompass"))
+		end
 		return
 	end
 	
