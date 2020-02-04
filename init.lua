@@ -4,6 +4,8 @@ local ccompass_modpath = minetest.get_modpath("ccompass")
 local default_modpath = minetest.get_modpath("default")
 local modstore = minetest.get_mod_storage()
 
+local ccompass_recalibration_allowed = minetest.settings:get_bool("ccompass_recalibrate", true)
+
 local S = minetest.get_translator(modname)
 
 local categories = {
@@ -234,7 +236,13 @@ local function read_book(itemstack, player_name)
 	save_state(player_name, state)
 end
 
-local function set_ccompass(player_name)
+local function set_ccompass(player_name, old_compass)
+	local old_pos = old_compass:get_meta():get_string("target_pos")
+	if not ccompass_recalibration_allowed and old_pos ~= "" then
+		minetest.chat_send_player(player_name, S("Compass is already calibrated."))
+		return
+	end
+
 	local state = get_state(player_name)
 	local category = state.category
 	if category ~= LOCATION_CATEGORY then
@@ -288,7 +296,7 @@ local detached_callbacks = {
 		elseif listname == "read_book" then
 			read_book(stack, player_name)
 		elseif listname == "set_ccompass" then
-			local new_ccompass = set_ccompass(player_name)
+			local new_ccompass = set_ccompass(player_name, stack)
 			if new_ccompass then
 				inv:remove_item(listname, stack)
 				inv:add_item(listname, new_ccompass)
