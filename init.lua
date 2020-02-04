@@ -1,7 +1,12 @@
 local modname = minetest.get_current_modname()
 local modpath = minetest.get_modpath(modname)
+
 local ccompass_modpath = minetest.get_modpath("ccompass")
 local default_modpath = minetest.get_modpath("default")
+local unified_inventory_modpath = minetest.get_modpath("unified_inventory")
+local sfinv_buttons_modpath = minetest.get_modpath("sfinv_buttons")
+local sfinv_modpath = minetest.get_modpath("sfinv")
+
 local modstore = minetest.get_mod_storage()
 
 local ccompass_recalibration_allowed = minetest.settings:get_bool("ccompass_recalibrate", true)
@@ -45,7 +50,7 @@ local function save_entry(player_name, category_index, entry_index, entry_text, 
 		entry_text:gsub("\r\n", "\n"):gsub("\r", "\n"))
 end
 
-local function swap(player_name, state, direction)
+local function swap_entry(player_name, state, direction)
 	local category_index = state.category
 	local entry_index = state.entry_selected[category_index]
 	local next_index = entry_index + direction
@@ -64,7 +69,7 @@ local function swap(player_name, state, direction)
 	save_state(player_name, state)
 end
 
-local function delete(player_name, state)
+local function delete_entry(player_name, state)
 	local category_index = state.category
 	local entry_count = state.entry_counts[category_index]
 	if entry_count == 0 then
@@ -108,6 +113,159 @@ local first_line = function(target)
 	return target:sub(1, first_return)
 end
 
+
+---------------------------------------
+-- Reading and writing stuff to items
+
+-- Book parameters
+local lpp = 14
+local max_text_size = 10000
+local max_title_size = 80
+local short_title_size = 35
+local function write_book(player_name)
+	local state = get_state(player_name)
+	local category = state.category
+	local entry_selected = state.entry_selected[category]
+	local content = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content")
+	local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
+	if state.category ~= 3 then
+		-- If it's a location or an event, add a little context to the title
+		topic = topic .. ": " .. first_line(content)
+	end
+	
+	local new_book = ItemStack("default:book_written")
+	local meta = new_book:get_meta()
+	
+	meta:set_string("owner", player_name)
+	meta:set_string("title", topic:sub(1, max_title_size))
+	meta:set_string("description", S("\"@1\" by @2", truncate_string(topic, short_title_size), player_name))
+	meta:set_string("text", content:sub(1, max_text_size))
+	meta:set_int("page", 1)
+	meta:set_int("page_max", math.ceil((#content:gsub("[^\n]", "") + 1) / lpp))
+	return new_book
+end
+
+local function read_book(itemstack, player_name)
+	local meta = itemstack:get_meta()
+	local topic = meta:get_string("title")
+	local content = meta:get_string("text")
+
+	local date_string = topic:match("^%d%d%d%d%-%d%d%-%d%d")
+	local pos_string = topic:match("^%(%-?[0-9]+,%-?[0-9]+,%-?[0-9]+%)")
+	
+	local category = GENERAL_CATEGORY
+	if date_string then
+		topic = date_string
+		category = EVENT_CATEGORY
+	elseif pos_string then
+		topic = pos_string
+		category = LOCATION_CATEGORY
+	end
+	
+	local state = get_state(player_name)
+	local entry_index = state.entry_counts[category] + 1
+	state.entry_counts[category] = entry_index
+	save_entry(player_name, category, entry_index, content, topic)
+	save_state(player_name, state)
+end
+
+local function set_ccompass(player_name, old_compass)
+	local old_pos = old_compass:get_meta():get_string("target_pos")
+	if not ccompass_recalibration_allowed and old_pos ~= "" then
+		minetest.chat_send_player(player_name, S("Compass is already calibrated."))
+		return
+	end
+
+	local state = get_state(player_name)
+	local category = state.category
+	if category ~= LOCATION_CATEGORY then
+		return
+	end
+	local entry_selected = state.entry_selected[category]
+	local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
+	local pos = minetest.string_to_pos(topic)
+	if not pos then
+		return
+	end
+	
+	local content = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content")
+	content = truncate_string(first_line(content), max_title_size)
+	local new_ccompass = ItemStack("ccompass:0")
+	local param = {
+		target_pos_string = topic,
+		target_name = content,
+		playername = player_name
+	}
+	ccompass.set_target(new_ccompass, param)
+	return new_ccompass
+end
+
+local ccompass_prefix = "ccompass:"
+local ccompass_prefix_length = #ccompass_prefix
+local detached_callbacks = {
+	allow_put = function(inv, listname, index, stack, player)
+		if listname == "write_book" then
+			if stack:get_name() == "default:book" then
+				return 1
+			end
+			return 0
+		elseif listname == "read_book" then
+			if stack:get_name() == "default:book_written" then
+				return 1
+			end
+			return 0
+		elseif listname == "set_ccompass" then
+			if stack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
+				return 1
+			end
+			return 0
+		end
+	end,
+    on_put = function(inv, listname, index, stack, player)
+		local player_name = player:get_player_name()
+		if listname == "write_book" then
+			inv:remove_item(listname, stack)		
+			inv:add_item(listname, write_book(player_name))
+		elseif listname == "read_book" then
+			read_book(stack, player_name)
+		elseif listname == "set_ccompass" then
+			local new_ccompass = set_ccompass(player_name, stack)
+			if new_ccompass then
+				inv:remove_item(listname, stack)
+				inv:add_item(listname, new_ccompass)
+			end
+		end
+	end,
+}
+
+local item_invs = {}
+local function item_formspec(player_name, label, listname)
+local function ensure_detached_inventory(player_name)
+	if item_invs[player_name] or not(default_modpath or ccompass_modpath) then
+		return
+	end
+	local inv = minetest.create_detached_inventory("personal_log_"..player_name, detached_callbacks)
+	if default_modpath then
+		inv:set_size("write_book", 1)
+		inv:set_size("read_book", 1)
+	end
+	if ccompass_modpath then
+		inv:set_size("set_ccompass", 1)
+	end
+	item_invs[player_name] = true
+end
+
+local function item_formspec(player_name, label, listname)
+	local formspec = "size[8,6]"
+		.. "label[1,0.25;" .. label .. "]"
+		.. "list[detached:personal_log_"..player_name..";"..listname..";3.5,0;1,1;]"
+		.. "list[current_player;main;0,1.5;8,4;]"
+		.. "listring[]"
+		.. "button[3.5,5.5;1,1;back;"..S("Back").."]"
+		
+	return formspec
+end
+
 ---------------------------------------------------------------
 -- Main formspec
 
@@ -116,6 +274,8 @@ local function make_personal_log_formspec(player)
 
 	local state = get_state(player_name)
 	local category_index = state.category
+	
+	ensure_detached_inventory(player_name)
 	
 	local formspec = {
 		"formspec_version[2]"
@@ -181,153 +341,8 @@ local function make_personal_log_formspec(player)
 	return table.concat(formspec)
 end
 
----------------------------------------
--- Reading and writing stuff to items
-
--- Book parameters
-local lpp = 14
-local max_text_size = 10000
-local max_title_size = 80
-local short_title_size = 35
-local function write_book(player_name)
-	local state = get_state(player_name)
-	local category = state.category
-	local entry_selected = state.entry_selected[category]
-	local content = modstore:get(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content") or ""
-	local topic = modstore:get(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic") or ""
-	if state.category ~= 3 then
-		-- If it's a location or an event, add a little context to the title
-		topic = topic .. ": " .. first_line(content)
-	end
-	
-	local new_book = ItemStack("default:book_written")
-	local meta = new_book:get_meta()
-	
-	meta:set_string("owner", player_name)
-	meta:set_string("title", topic:sub(1, max_title_size))
-	meta:set_string("description", S("\"@1\" by @2", truncate_string(topic, short_title_size), player_name))
-	meta:set_string("text", content:sub(1, max_text_size))
-	meta:set_int("page", 1)
-	meta:set_int("page_max", math.ceil((#content:gsub("[^\n]", "") + 1) / lpp))
-	return new_book
-end
-
-local function read_book(itemstack, player_name)
-	local meta = itemstack:get_meta()
-	local topic = meta:get_string("title")
-	local content = meta:get_string("text")
-
-	local date_string = topic:match("^%d%d%d%d%-%d%d%-%d%d")
-	local pos_string = topic:match("^%(%-?[0-9]+,%-?[0-9]+,%-?[0-9]+%)")
-	
-	local category = GENERAL_CATEGORY
-	if date_string then
-		topic = date_string
-		category = EVENT_CATEGORY
-	elseif pos_string then
-		topic = pos_string
-		category = LOCATION_CATEGORY
-	end
-	
-	local state = get_state(player_name)
-	local entry_index = state.entry_counts[category] + 1
-	state.entry_counts[category] = entry_index
-	save_entry(player_name, category, entry_index, content, topic)
-	save_state(player_name, state)
-end
-
-local function set_ccompass(player_name, old_compass)
-	local old_pos = old_compass:get_meta():get_string("target_pos")
-	if not ccompass_recalibration_allowed and old_pos ~= "" then
-		minetest.chat_send_player(player_name, S("Compass is already calibrated."))
-		return
-	end
-
-	local state = get_state(player_name)
-	local category = state.category
-	if category ~= LOCATION_CATEGORY then
-		return
-	end
-	local entry_selected = state.entry_selected[category]
-	local topic = modstore:get(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic") or ""
-	local pos = minetest.string_to_pos(topic)
-	if not pos then
-		return
-	end
-	
-	local content = modstore:get(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content") or ""
-	content = truncate_string(first_line(content), max_title_size)
-	local new_ccompass = ItemStack("ccompass:0")
-	local param = {
-		target_pos_string = topic,
-		target_name = content,
-		playername = player_name
-	}
-	ccompass.set_target(new_ccompass, param)
-	return new_ccompass
-end
-
-local ccompass_prefix = "ccompass:"
-local ccompass_prefix_length = #ccompass_prefix
-local detached_callbacks = {
-	allow_put = function(inv, listname, index, stack, player)
-		if listname == "write_book" then
-			if stack:get_name() == "default:book" then
-				return 1
-			end
-			return 0
-		elseif listname == "read_book" then
-			if stack:get_name() == "default:book_written" then
-				return 1
-			end
-			return 0
-		elseif listname == "set_ccompass" then
-			if stack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
-				return 1
-			end
-			return 0
-		end
-	end,
-    on_put = function(inv, listname, index, stack, player)
-		local player_name = player:get_player_name()
-		if listname == "write_book" then
-			inv:remove_item(listname, stack)		
-			inv:add_item(listname, write_book(player_name))
-		elseif listname == "read_book" then
-			read_book(stack, player_name)
-		elseif listname == "set_ccompass" then
-			local new_ccompass = set_ccompass(player_name, stack)
-			if new_ccompass then
-				inv:remove_item(listname, stack)
-				inv:add_item(listname, new_ccompass)
-			end
-		end
-	end,
-}
-
-local item_invs = {}
-local function item_formspec(player_name, label, listname)
-	if not item_invs[player_name] then
-		local inv = minetest.create_detached_inventory("personal_log_"..player_name, detached_callbacks)
-		if default_modpath then
-			inv:set_size("write_book", 1)
-			inv:set_size("read_book", 1)
-		end
-		if ccompass_modpath then
-			inv:set_size("set_ccompass", 1)
-		end
-		item_invs[player_name] = true
-	end
-
-	local formspec = "size[8,6]"
-		.. "label[1,0.25;" .. label .. "]"
-		.. "list[detached:personal_log_"..player_name..";"..listname..";3.5,0;1,1;]"
-		.. "list[current_player;main;0,1.5;8,4;]"
-		.. "listring[]"
-		.. "button[3.5,5.5;1,1;back;"..S("Back").."]"
-		
-	return formspec
-end
+-------------------------------------------
+-- Input handlers
 
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "personal_log:item" then
@@ -338,14 +353,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 end)
 
--------------------------------------------
-
-minetest.register_on_player_receive_fields(function(player, formname, fields)
-	if formname ~= "personal_log:root" then
-		return
-	end
+local function on_player_receive_fields(player, fields, update_callback)
 	local player_name = player:get_player_name()
-	local player_pos = player:get_pos()
 	local state = get_state(player_name)
 	local category = state.category
 	local entry_selected = state.entry_selected[category]
@@ -355,7 +364,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		if table_event.type == "CHG" then
 			state.entry_selected[category] = table_event.row
 			save_state(player_name, state)
-			minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+			update_callback(player)
 			return
 		end
 	end
@@ -366,7 +375,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		else
 			save_entry(player_name, category, entry_selected, fields.entry_data)
 		end
-		minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+		update_callback(player)
 		return
 	end
 	
@@ -391,23 +400,23 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			save_entry(player_name, category, entry_index, content, general_topic)
 		end
 		save_state(player_name, state)
-		minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+		update_callback(player)
 		return
 	end
 	
 	if fields.move_up then
-		swap(player_name, state, -1)
-		minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+		swap_entry(player_name, state, -1)
+		update_callback(player)
 		return
 	end
 	if fields.move_down then
-		swap(player_name, state, 1)
-		minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+		swap_entry(player_name, state, 1)
+		update_callback(player)
 		return
 	end
 	if fields.delete then
-		delete(player_name, state)
-		minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+		delete_entry(player_name, state)
+		update_callback(player)
 		return
 	end
 
@@ -434,7 +443,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				if state.category ~= i then
 					state.category = i
 					save_state(player_name, state)
-					minetest.show_formspec(player_name,"personal_log:root", make_personal_log_formspec(player))
+					update_callback(player)
 					return
 				else
 					break
@@ -442,6 +451,15 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			end
 		end
 	end
+end
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	if formname ~= "personal_log:root" then
+		return
+	end
+	on_player_receive_fields(player, fields, function(player)
+		minetest.show_formspec(player:get_player_name(), "personal_log:root", make_personal_log_formspec(player))
+	end)
 end)
 
 
@@ -449,7 +467,7 @@ end)
 
 
 -- Unified Inventory
-if minetest.get_modpath("unified_inventory") then
+if unified_inventory_modpath then
 	unified_inventory.register_button("personal_log", {
 		type = "image",
 		image = "personal_log_open_book.png",
@@ -462,7 +480,7 @@ if minetest.get_modpath("unified_inventory") then
 end
 
 -- sfinv_buttons
-if minetest.get_modpath("sfinv_buttons") then
+if sfinv_buttons_modpath then
 	sfinv_buttons.register_button("personal_log", {
 		image = "personal_log_open_book.png",
 		tooltip = S("Your personal log for keeping track of what happens where"),
@@ -472,7 +490,7 @@ if minetest.get_modpath("sfinv_buttons") then
 			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(player))
 		end,
 	})
-elseif minetest.get_modpath("sfinv") then
+elseif sfinv_modpath then
 	sfinv.register_page("personal_log:personal_log", {
 		title = S("Log"),
 		get = function(_, player, context)
