@@ -326,6 +326,10 @@ local function make_personal_log_formspec(player)
 		.."button[4.5,0.5;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
 
+	if category_index == LOCATION_CATEGORY and minetest.check_player_privs(player_name, "teleport") then
+		formspec[#formspec+1] = "button[7,0.5;2,0.5;teleport;"..S("Teleport") .."]"
+	end
+
 	if default_modpath then
 		formspec[#formspec+1] = "button[0,0.75;1.25,0.5;copy_to;"..S("To Book").."]"
 			.."button[1.375,0.75;1.25,0.5;copy_from;"..S("From Book").."]"
@@ -418,9 +422,20 @@ local function on_player_receive_fields(player, fields, update_callback)
 		update_callback(player)
 		return
 	end
+	
+	if fields.teleport
+		and category == LOCATION_CATEGORY
+		and state.entry_counts[category] ~= 0
+		and minetest.check_player_privs(player_name, "teleport") then
+		local pos_string = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
+		local pos = minetest.string_to_pos(pos_string)
+		if pos then
+			player:set_pos(pos)
+		end
+	end
 
 	if fields.copy_to then
-		if state.entry_counts[state.category] ~= 0 then
+		if state.entry_counts[category] ~= 0 then
 			minetest.show_formspec(player_name, "personal_log:item",
 				item_formspec(player_name, S("Copy log to blank book:"), "write_book"))
 		end
@@ -432,7 +447,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 		return
 	end
 	if fields.set_ccompass then
-		if state.entry_counts[state.category] ~= 0 then
+		if state.entry_counts[category] ~= 0 then
 			minetest.show_formspec(player_name, "personal_log:item",
 				item_formspec(player_name, S("Set a compass to this location:"), "set_ccompass"))
 		end
