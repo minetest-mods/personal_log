@@ -453,6 +453,7 @@ local function make_personal_log_formspec(player)
 	local formspec = {
 		"formspec_version[2]"
 		.."size[10,10]"
+		.."button_exit[9.0,0.25;0.5,0.5;close;X]"
 		.."dropdown[1.5,0.25;2,0.5;category_select;"
 		.. table.concat(categories, ",") .. ";"..category_index.."]"
 		.. "label[0.5,0.5;"..S("Category:").."]"
@@ -501,7 +502,7 @@ local function make_personal_log_formspec(player)
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
 
 	if category_index == LOCATION_CATEGORY and minetest.check_player_privs(player_name, "teleport") then
-		formspec[#formspec+1] = "button[7,0.5;2,0.5;teleport;"..S("Teleport") .."]"
+		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
 	if default_modpath or ccompass_modpath or compassgps_modpath then
