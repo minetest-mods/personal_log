@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-02-04 13:23-0700\n"
+"POT-Creation-Date: 2020-02-04 20:56-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,96 +17,120 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: personal_log\init.lua:18
+#: personal_log\init.lua:20
 msgid "Location"
 msgstr ""
 
-#: personal_log\init.lua:19
+#: personal_log\init.lua:21
 msgid "Event"
 msgstr ""
 
-#: personal_log\init.lua:20
+#: personal_log\init.lua:22
 msgid "General"
 msgstr ""
 
-#: personal_log\init.lua:142
+#: personal_log\init.lua:152
 msgid "\"@1\" by @2"
 msgstr ""
 
-#: personal_log\init.lua:230
-msgid "Compass is already calibrated."
+#: personal_log\init.lua:389
+#: personal_log\init.lua:390
+#: personal_log\init.lua:391
+msgid "a book"
 msgstr ""
 
-#: personal_log\init.lua:342
-msgid "Back"
+#: personal_log\init.lua:394
+msgid "a calibrated compass"
 msgstr ""
 
-#: personal_log\init.lua:363
-msgid "Category:"
+#: personal_log\init.lua:396
+msgid "a compass"
 msgstr ""
 
-#: personal_log\init.lua:364
-msgid "Personal Log Entries"
-msgstr ""
-
-#: personal_log\init.lua:402
-msgid "Save"
-msgstr ""
-
-#: personal_log\init.lua:403
-msgid "New"
-msgstr ""
-
-#: personal_log\init.lua:404
-msgid "Move Up"
-msgstr ""
-
-#: personal_log\init.lua:405
-msgid "Move Down"
+#: personal_log\init.lua:400
+#: personal_log\init.lua:401
+msgid "a GPS compass map"
 msgstr ""
 
 #: personal_log\init.lua:406
-msgid "Delete"
+msgid "@1"
 msgstr ""
 
 #: personal_log\init.lua:409
+msgid "@1 or @2"
+msgstr ""
+
+#: personal_log\init.lua:412
+msgid "@1, @2 or @3"
+msgstr ""
+
+#: personal_log\init.lua:423
+msgid "Import an entry from @1"
+msgstr ""
+
+#: personal_log\init.lua:426
+#: personal_log\init.lua:428
+msgid "Export \"@1\" to @2"
+msgstr ""
+
+#: personal_log\init.lua:437
+msgid "Back"
+msgstr ""
+
+#: personal_log\init.lua:458
+msgid "Category:"
+msgstr ""
+
+#: personal_log\init.lua:459
+msgid "Personal Log Entries"
+msgstr ""
+
+#: personal_log\init.lua:497
+msgid "Save"
+msgstr ""
+
+#: personal_log\init.lua:498
+msgid "New"
+msgstr ""
+
+#: personal_log\init.lua:499
+msgid "Move Up"
+msgstr ""
+
+#: personal_log\init.lua:500
+msgid "Move Down"
+msgstr ""
+
+#: personal_log\init.lua:501
+msgid "Delete"
+msgstr ""
+
+#: personal_log\init.lua:504
 msgid "Teleport"
 msgstr ""
 
-#: personal_log\init.lua:413
-msgid "To Book"
+#: personal_log\init.lua:508
+msgid "Export"
 msgstr ""
 
-#: personal_log\init.lua:414
-msgid "From Book"
+#: personal_log\init.lua:509
+msgid "Import"
 msgstr ""
 
-#: personal_log\init.lua:419
-msgid "To Compass"
+#: personal_log\init.lua:620
+msgid "@1: @2"
 msgstr ""
 
-#: personal_log\init.lua:527
-msgid "Copy log to blank book:"
-msgstr ""
-
-#: personal_log\init.lua:533
-msgid "Copy log from written book:"
-msgstr ""
-
-#: personal_log\init.lua:539
-msgid "Set a compass to this location:"
-msgstr ""
-
-#: personal_log\init.lua:579
-#: personal_log\init.lua:591
+#: personal_log\init.lua:668
+#: personal_log\init.lua:680
 msgid "Your personal log for keeping track of what happens where"
 msgstr ""
 
-#: personal_log\init.lua:592
-#: personal_log\init.lua:600
+#: personal_log\init.lua:681
+#: personal_log\init.lua:689
 msgid "Log"
 msgstr ""
 
-#: personal_log\init.lua:604
+#: personal_log\init.lua:693
 msgid "Open personal log"
 msgstr ""

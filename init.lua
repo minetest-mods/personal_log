@@ -11,6 +11,8 @@ local sfinv_modpath = minetest.get_modpath("sfinv")
 local modstore = minetest.get_mod_storage()
 
 local ccompass_recalibration_allowed = minetest.settings:get_bool("ccompass_recalibrate", true)
+local ccompass_restrict_target = minetest.settings:get_bool("ccompass_restrict_target", false)
+local ccompass_description_prefix = "^Compass to "
 
 local S = minetest.get_translator(modname)
 
@@ -23,6 +25,10 @@ local categories = {
 local LOCATION_CATEGORY = 1
 local EVENT_CATEGORY = 2
 local GENERAL_CATEGORY = 3
+
+-- used for determining if an item is a ccompass
+local ccompass_prefix = "ccompass:"
+local ccompass_prefix_length = #ccompass_prefix
 
 --------------------------------------------------------
 -- Data store
@@ -118,6 +124,10 @@ end
 ---------------------------------------
 -- Reading and writing stuff to items
 
+
+----------------------------------------------------------------
+-- Export
+
 -- Book parameters
 local lpp = 14
 local max_text_size = 10000
@@ -166,6 +176,32 @@ local function write_cgpsmap(player_name)
 	return new_map
 end
 
+local function write_ccompass(player_name, old_compass)
+	local state = get_state(player_name)
+	local category = state.category
+	if category ~= LOCATION_CATEGORY then
+		return
+	end
+	local entry_selected = state.entry_selected[category]
+	
+	local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
+	local pos = minetest.string_to_pos(topic)
+	if not pos then
+		return
+	end
+
+	local content = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content")
+	content = truncate_string(first_line(content), max_title_size)
+	local new_ccompass = ItemStack("ccompass:0")
+	local param = {
+		target_pos_string = topic,
+		target_name = content,
+		playername = player_name
+	}
+	ccompass.set_target(new_ccompass, param)
+	return new_ccompass
+end
+
 local function write_item(player_name, itemstack)
 	local item_name = itemstack:get_name()
 	if item_name == "default:book" then
@@ -174,7 +210,13 @@ local function write_item(player_name, itemstack)
 	if item_name == "compassgps:cgpsmap" then
 		return write_cgpsmap(player_name)
 	end
+	if item_name:sub(1,ccompass_prefix_length) == ccompass_prefix then
+		return write_ccompass(player_name, itemstack)
+	end
 end
+
+----------------------------------------------------------------------------------------
+-- Import
 
 local function read_book(itemstack, player_name)
 	local meta = itemstack:get_meta()
@@ -200,6 +242,21 @@ local function read_book(itemstack, player_name)
 	save_state(player_name, state)
 end
 
+local function read_ccompass(itemstack, player_name)
+	local meta = itemstack:get_meta()
+	local topic = meta:get_string("target_pos")
+	local content = meta:get_string("description")
+	local prefix_start, prefix_end = content:find(ccompass_description_prefix)
+	if prefix_end then
+		content = content:sub(prefix_end+1)
+	end	
+	local state = get_state(player_name)
+	local entry_index = state.entry_counts[LOCATION_CATEGORY] + 1
+	state.entry_counts[LOCATION_CATEGORY] = entry_index
+	save_entry(player_name, LOCATION_CATEGORY, entry_index, content, topic)
+	save_state(player_name, state)
+end
+
 local function read_cgpsmap(itemstack, player_name)
 	-- TODO: get_metadata is a deprecated function, but it is necessary because that's what cgpsmap uses.
 	local meta = minetest.deserialize(itemstack:get_metadata())
@@ -221,63 +278,63 @@ local function read_item(itemstack, player_name)
 		read_book(itemstack, player_name)
 	elseif item_name == "compassgps:cgpsmap_marked" then
 		read_cgpsmap(itemstack, player_name)
+	elseif item_name:sub(1,ccompass_prefix_length) == ccompass_prefix then
+		read_ccompass(itemstack, player_name)
 	end
 end
 
-local function set_ccompass(player_name, old_compass)
-	local old_pos = old_compass:get_meta():get_string("target_pos")
-	if not ccompass_recalibration_allowed and old_pos ~= "" then
-		minetest.chat_send_player(player_name, S("Compass is already calibrated."))
-		return
-	end
+--------------------------------------------------------------------------
+-- Detached inventory
 
-	local state = get_state(player_name)
-	local category = state.category
-	if category ~= LOCATION_CATEGORY then
-		return
+-- Allow or disallow ccompasses based on whether they've got target info in their meta
+local function ccompass_permitted_target(itemstack)
+	if ccompass_restrict_target then
+		-- We have no idea whether there's an allowed node at this location, so don't allow
+		-- setting compasses when node type restriction is enabled.
+		return false
 	end
-	local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
-	local pos = minetest.string_to_pos(topic)
-	if not pos then
-		return
+	if not itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
+		return false
 	end
-	
-	local content = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content")
-	content = truncate_string(first_line(content), max_title_size)
-	local new_ccompass = ItemStack("ccompass:0")
-	local param = {
-		target_pos_string = topic,
-		target_name = content,
-		playername = player_name
-	}
-	ccompass.set_target(new_ccompass, param)
-	return new_ccompass
+	local meta = itemstack:get_meta()
+	local has_pos = minetest.string_to_pos(meta:get_string("target_pos"))
+	if has_pos and not ccompass_recalibration_allowed then
+		return false
+	end
+	return true	
+end
+local function ccompass_permitted_source(itemstack)
+	if not itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
+		return false
+	end
+	local meta = itemstack:get_meta()
+	local has_pos = minetest.string_to_pos(meta:get_string("target_pos"))
+	if not has_pos then
+		return false
+	end
+	return true
 end
 
-local ccompass_prefix = "ccompass:"
-local ccompass_prefix_length = #ccompass_prefix
 local detached_callbacks = {
 	allow_put = function(inv, listname, index, stack, player)
 		local stack_name = stack:get_name()
-		if listname == "write_book" then
+		if listname == "export_item" then
 			if stack_name == "default:book" then
 				return 1
 			end
 			local player_name = player:get_player_name()
 			local state = get_state(player_name)
 			local category = state.category
-			if category == LOCATION_CATEGORY and stack_name == "compassgps:cgpsmap" then
+			if category == LOCATION_CATEGORY and 
+				(stack_name == "compassgps:cgpsmap" or
+				ccompass_permitted_target(stack)) then
 				return 1
 			end
 			return 0
-		elseif listname == "read_book" then
-			if stack_name == "default:book_written" or stack_name == "compassgps:cgpsmap_marked" then
-				return 1
-			end
-			return 0
-		elseif listname == "set_compass" then
-			-- TODO: support setting cgpscompass compasses directly
-			if stack_name:sub(1,ccompass_prefix_length) == ccompass_prefix then
+		elseif listname == "import_item" then
+			if stack_name == "default:book_written" or
+				stack_name == "compassgps:cgpsmap_marked" or
+				ccompass_permitted_source(stack) then
 				return 1
 			end
 			return 0
@@ -285,17 +342,12 @@ local detached_callbacks = {
 	end,
     on_put = function(inv, listname, index, stack, player)
 		local player_name = player:get_player_name()
-		if listname == "write_book" then
+		if listname == "export_item" then
+			local new_item = write_item(player_name, stack)
 			inv:remove_item(listname, stack)		
-			inv:add_item(listname, write_item(player_name, stack))
-		elseif listname == "read_book" then
+			inv:add_item(listname, new_item)
+		elseif listname == "import_item" then
 			read_item(stack, player_name)
-		elseif listname == "set_compass" then
-			local new_ccompass = set_ccompass(player_name, stack)
-			if new_ccompass then
-				inv:remove_item(listname, stack)
-				inv:add_item(listname, new_ccompass)
-			end
 		end
 	end,
 }
@@ -306,17 +358,12 @@ local function ensure_detached_inventory(player_name)
 		return
 	end
 	local inv = minetest.create_detached_inventory("personal_log_"..player_name, detached_callbacks)
-	if default_modpath then
-		inv:set_size("write_book", 1)
-		inv:set_size("read_book", 1)
-	end
-	if ccompass_modpath or compassgps_modpath then
-		inv:set_size("set_compass", 1)
-	end
+	inv:set_size("export_item", 1)
+	inv:set_size("import_item", 1)
 	item_invs[player_name] = true
 end
 
--- if a player leaves stuff in their detached inventory, try giving it to them when they leave
+-- if a player leaves stuff in their detached inventory, try giving it to them when they exit
 local function try_return(detached_inv, player_inv, listname)
 	local item = detached_inv:get_stack(listname, 1)
 	item = player_inv:add_item("main", item)
@@ -327,15 +374,63 @@ local function return_all_items(player)
 	if item_invs[player_name] then
 		local player_inv = minetest.get_inventory({type="player", name=player_name})
 		local detached_inv = minetest.get_inventory({type="detached", name="personal_log_"..player_name})
-		try_return(detached_inv, player_inv, "set_compass") -- do compass first, it's most expensive
-		try_return(detached_inv, player_inv, "write_book")
-		try_return(detached_inv, player_inv, "read_book")
+		try_return(detached_inv, player_inv, "export_item")
+		try_return(detached_inv, player_inv, "import_item")
 	end
 end
 
-local function item_formspec(player_name, label, listname)
+------------------------------------------------------------------------
+-- Import/export formspec
+
+local import_mods = {}
+local export_generic_mods = {}
+local export_location_mods = {}
+if default_modpath then
+	table.insert(import_mods, S("a book"))
+	table.insert(export_generic_mods, S("a book"))
+	table.insert(export_location_mods, S("a book"))
+end
+if ccompass_modpath then
+	table.insert(import_mods, S("a calibrated compass"))
+	if not ccompass_restrict_target then
+		table.insert(export_location_mods, S("a compass"))
+	end
+end
+if compassgps_modpath then
+	table.insert(import_mods, S("a GPS compass map"))
+	table.insert(export_location_mods, S("a GPS compass map"))
+end
+
+local function aggregate_localized_string(list)
+	if #list == 1 then
+		return S("@1", list[1])
+	end
+	if #list == 2 then
+		return S("@1 or @2", list[1], list[2])
+	end
+	if #list == 3 then
+		return S("@1, @2 or @3", list[1], list[2], list[3])
+	end
+end
+
+local import_label = aggregate_localized_string(import_mods)
+local export_generic_label = aggregate_localized_string(export_generic_mods)
+local export_location_label = aggregate_localized_string(export_location_mods)
+
+local function item_formspec(player_name, category, listname, topic)
+	local label
+	if listname == "import_item" then
+		label = S("Import an entry from @1", import_label)
+	else
+		if category == LOCATION_CATEGORY then
+			label = S('Export "@1" to @2', topic, export_location_label)
+		else
+			label = S('Export "@1" to @2', topic, export_generic_label)
+		end
+	end
+
 	local formspec = "size[8,6]"
-		.. "label[1,0.25;" .. label .. "]"
+		.. "label[0,1;" .. label .. "]"
 		.. "list[detached:personal_log_"..player_name..";"..listname..";3.5,0;1,1;]"
 		.. "list[current_player;main;0,1.5;8,4;]"
 		.. "listring[]"
@@ -402,21 +497,16 @@ local function make_personal_log_formspec(player)
 		.."button[0,0;2,0.5;save;"..S("Save").."]"
 		.."button[2,0;2,0.5;create;"..S("New").."]"
 		.."button[4.5,0;2,0.5;move_up;"..S("Move Up").."]"
-		.."button[4.5,0.5;2,0.5;move_down;"..S("Move Down").."]"
+		.."button[4.5,0.75;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
 
 	if category_index == LOCATION_CATEGORY and minetest.check_player_privs(player_name, "teleport") then
 		formspec[#formspec+1] = "button[7,0.5;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
-	if default_modpath then
-		formspec[#formspec+1] = "button[0,0.75;1.25,0.5;copy_to;"..S("To Book").."]"
-			.."button[1.375,0.75;1.25,0.5;copy_from;"..S("From Book").."]"
-	end
-
-	-- TODO: support setting cgpscompass compasses directly
-	if ccompass_modpath and category_index == LOCATION_CATEGORY then
-		formspec[#formspec+1] = "button[2.75,0.75;1.25,0.5;set_compass;"..S("To Compass").."]"
+	if default_modpath or ccompass_modpath or compassgps_modpath then
+		formspec[#formspec+1] = "button[0,0.75;2.0,0.5;copy_to;"..S("Export").."]"
+			.."button[2,0.75;2.0,0.5;copy_from;"..S("Import").."]"
 	end
 
 	formspec[#formspec+1] = "container_end[]"
@@ -523,21 +613,20 @@ local function on_player_receive_fields(player, fields, update_callback)
 
 	if fields.copy_to then
 		if valid_entry_selected then
+			local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
+			if category ~= 3 then
+				-- If it's a location or an event, add a little context to the title
+				local content = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_content")
+				topic = S("@1: @2", topic, truncate_string(first_line(content), short_title_size))
+			end
 			minetest.show_formspec(player_name, "personal_log:item",
-				item_formspec(player_name, S("Copy log to blank book:"), "write_book"))
+				item_formspec(player_name, category, "export_item", topic))
 		end
 		return
 	end
 	if fields.copy_from then
 		minetest.show_formspec(player_name, "personal_log:item",
-			item_formspec(player_name, S("Copy log from written book:"), "read_book"))
-		return
-	end
-	if fields.set_compass then
-		if valid_entry_selected then
-			minetest.show_formspec(player_name, "personal_log:item",
-				item_formspec(player_name, S("Set a compass to this location:"), "set_compass"))
-		end
+			item_formspec(player_name, category, "import_item"))
 		return
 	end
 

@@ -12,7 +12,7 @@ Logs can be entered into three different categories:
 - Events
 - General
 
-Location logs will automatically have the player's coordinates saved with them when they're created. If the [ccompass](https://github.com/minetest-mods/ccompass) mod is installed there will be an interface that allows you to set a compass to track the location of one of these entries.
+Location logs will automatically have the player's coordinates saved with them when they're created. If the [ccompass](https://github.com/minetest-mods/ccompass) mod is installed there will be an interface that allows you to set a compass to track the location of one of these entries. You can also read and write maps belonging to the [compassgps](https://github.com/Kilarin/compassgps/) mod.
 
 Event logs automatically have the current date saved with them when they're created.
 
