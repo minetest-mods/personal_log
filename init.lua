@@ -656,9 +656,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end)
 end)
 
-
 -------------------------------------------------------------------------------------------------------
 
+if minetest.settings:get_bool("personal_log_inventory_button", true) then
 
 -- Unified Inventory
 if unified_inventory_modpath then
@@ -700,4 +700,26 @@ elseif sfinv_modpath then
 			end
 		end
 	})
+end
+
+end
+-----------------------------------------------------------------------------------------------------
+
+if minetest.settings:get_bool("personal_log_craftable_item", false) then
+
+minetest.register_craftitem("personal_log:book", {
+	description = S("Personal Log"),
+	inventory_image = "personal_log_open_book.png",
+	groups = {book = 1, flammable = 3},
+	on_use = function(itemstack, user, pointed_thing)
+		local name = user:get_player_name()
+		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+	end,
+})
+
+minetest.register_craft({
+	output = "personal_log:book",
+	recipe = {{"default:book", "default:book"}}
+})
+
 end
