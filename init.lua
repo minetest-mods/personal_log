@@ -50,11 +50,13 @@ end
 
 local function save_entry(player_name, category_index, entry_index, entry_text, topic_text)
 	if topic_text then
+		topic_text = topic_text:gsub("\r\n", "\n"):gsub("\r", "\n"):gsub("\n", " ")
 		modstore:set_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_index .. "_topic",
-			topic_text:gsub("\r\n", "\n"):gsub("\r", "\n"):gsub("\n", " "))
+			topic_text)
 	end
+	entry_text = entry_text:gsub("\r\n", "\n"):gsub("\r", "\n")
 	modstore:set_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_index .. "_content",
-		entry_text:gsub("\r\n", "\n"):gsub("\r", "\n"))
+		entry_text)
 end
 
 local function swap_entry(player_name, state, direction)
@@ -83,13 +85,13 @@ local function delete_entry(player_name, state)
 		return
 	end
 	local entry_index = state.entry_selected[category_index]
-	
+
 	for i = entry_index + 1, entry_count do
 		local topic = modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_topic")
 		local content = modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_content")
 		save_entry(player_name, category_index, i-1, content, topic)
 	end
-	
+
 	modstore:set_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_count .. "_topic", "")
 	modstore:set_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_count .. "_content", "")
 	entry_count = entry_count - 1
@@ -658,6 +660,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 end)
 
 -------------------------------------------------------------------------------------------------------
+-- Inventory interface
 
 if minetest.settings:get_bool("personal_log_inventory_button", true) then
 
@@ -704,7 +707,9 @@ elseif sfinv_modpath then
 end
 
 end
+
 -----------------------------------------------------------------------------------------------------
+-- Craftable item
 
 if minetest.settings:get_bool("personal_log_craftable_item", false) then
 
