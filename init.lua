@@ -7,6 +7,7 @@ local default_modpath = minetest.get_modpath("default")
 local unified_inventory_modpath = minetest.get_modpath("unified_inventory")
 local sfinv_buttons_modpath = minetest.get_modpath("sfinv_buttons")
 local sfinv_modpath = minetest.get_modpath("sfinv")
+local mcl_books_modpath = minetest.get_modpath("mcl_books")
 
 local modstore = minetest.get_mod_storage()
 
@@ -29,6 +30,24 @@ local GENERAL_CATEGORY = 3
 -- used for determining if an item is a ccompass
 local ccompass_prefix = "ccompass:"
 local ccompass_prefix_length = #ccompass_prefix
+
+local book_unwritten
+local book_written
+local author_meta_field
+if default_modpath then
+	book_unwritten = "default:book"
+	book_written = "default:book_written"
+	author_meta_field = "owner"
+elseif mcl_books_modpath then
+	book_unwritten = "mcl_books:book"
+	book_written = "mcl_books:written_book"
+	author_meta_field = "author"
+end
+
+local mcl_formspec_itemslot
+if mcl_formspec then
+	mcl_formspec_itemslot = mcl_formspec.get_itemslot_bg
+end
 
 --------------------------------------------------------
 -- Data store
@@ -146,10 +165,10 @@ local function write_book(player_name)
 		topic = topic .. ": " .. first_line(content)
 	end
 	
-	local new_book = ItemStack("default:book_written")
+	local new_book = ItemStack(book_written)
 	local meta = new_book:get_meta()
 	
-	meta:set_string("owner", player_name)
+	meta:set_string(author_meta_field, player_name)
 	meta:set_string("title", topic:sub(1, max_title_size))
 	meta:set_string("description", S("\"@1\" by @2", truncate_string(topic, short_title_size), player_name))
 	meta:set_string("text", content:sub(1, max_text_size))
@@ -206,7 +225,7 @@ end
 
 local function write_item(player_name, itemstack)
 	local item_name = itemstack:get_name()
-	if item_name == "default:book" then
+	if item_name == book_unwritten then
 		return write_book(player_name)
 	end
 	if item_name == "compassgps:cgpsmap" then
@@ -276,7 +295,7 @@ end
 
 local function read_item(itemstack, player_name)
 	local item_name = itemstack:get_name()
-	if item_name == "default:book_written" then
+	if item_name == book_written then
 		read_book(itemstack, player_name)
 	elseif item_name == "compassgps:cgpsmap_marked" then
 		read_cgpsmap(itemstack, player_name)
@@ -295,7 +314,7 @@ local function ccompass_permitted_target(itemstack)
 		-- setting compasses when node type restriction is enabled.
 		return false
 	end
-	if not itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
+	if not (itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix) then
 		return false
 	end
 	local meta = itemstack:get_meta()
@@ -321,7 +340,7 @@ local detached_callbacks = {
 	allow_put = function(inv, listname, index, stack, player)
 		local stack_name = stack:get_name()
 		if listname == "export_item" then
-			if stack_name == "default:book" then
+			if stack_name == book_unwritten then
 				return 1
 			end
 			local player_name = player:get_player_name()
@@ -334,13 +353,14 @@ local detached_callbacks = {
 			end
 			return 0
 		elseif listname == "import_item" then
-			if stack_name == "default:book_written" or
+			if stack_name == book_written or
 				stack_name == "compassgps:cgpsmap_marked" or
 				ccompass_permitted_source(stack) then
 				return 1
 			end
 			return 0
 		end
+		return 0
 	end,
     on_put = function(inv, listname, index, stack, player)
 		local player_name = player:get_player_name()
@@ -356,7 +376,7 @@ local detached_callbacks = {
 
 local item_invs = {}
 local function ensure_detached_inventory(player_name)
-	if item_invs[player_name] or not(default_modpath or ccompass_modpath or compassgps_modpath) then
+	if item_invs[player_name] or not(default_modpath or mcl_books_modpath or ccompass_modpath or compassgps_modpath) then
 		return
 	end
 	local inv = minetest.create_detached_inventory("personal_log_"..player_name, detached_callbacks)
@@ -387,7 +407,7 @@ end
 local import_mods = {}
 local export_generic_mods = {}
 local export_location_mods = {}
-if default_modpath then
+if default_modpath or mcl_books_modpath then
 	table.insert(import_mods, S("a book"))
 	table.insert(export_generic_mods, S("a book"))
 	table.insert(export_location_mods, S("a book"))
@@ -437,6 +457,11 @@ local function item_formspec(player_name, category, listname, topic)
 		.. "list[current_player;main;0,1.5;8,4;]"
 		.. "listring[]"
 		.. "button[3.5,5.5;1,1;back;"..S("Back").."]"
+	
+	if mcl_formspec_itemslot then
+		formspec = formspec .. mcl_formspec_itemslot(3.5, 0, 1, 1)
+			.. mcl_formspec_itemslot(0,1.5,8,4)
+	end
 		
 	return formspec
 end
@@ -507,7 +532,7 @@ local function make_personal_log_formspec(player)
 		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
-	if default_modpath or ccompass_modpath or compassgps_modpath then
+	if default_modpath or mcl_books_modpath or ccompass_modpath or compassgps_modpath then
 		formspec[#formspec+1] = "button[0,0.75;2.0,0.5;copy_to;"..S("Export").."]"
 			.."button[2,0.75;2.0,0.5;copy_from;"..S("Import").."]"
 	end
@@ -710,8 +735,9 @@ end
 
 -----------------------------------------------------------------------------------------------------
 -- Craftable item
+local craftable_setting = minetest.settings:get_bool("personal_log_craftable_item", false)
 
-if minetest.settings:get_bool("personal_log_craftable_item", false) then
+if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv_buttons_modpath) then
 
 minetest.register_craftitem("personal_log:book", {
 	description = S("Personal Log"),
@@ -725,7 +751,7 @@ minetest.register_craftitem("personal_log:book", {
 
 minetest.register_craft({
 	output = "personal_log:book",
-	recipe = {{"default:book", "default:book"}}
+	recipe = {{book_unwritten, book_unwritten}}
 })
 
 end
