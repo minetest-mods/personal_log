@@ -19,3 +19,9 @@ Event logs automatically have the current date saved with them when they're crea
 General logs have a free-form text field for their topic, players can use these to record any other sort of general information they desire.
 
 There's no limit to how many logs a player can write.
+
+# Chat command access
+
+Chat command access is disabled by default. If ``personal_log_chat_command`` is set to ``true`` then the ``/log`` chat command can be used to open the personal log.
+
+If you want to enable this for administrators but require players to craft an item, setting ``personal_log_chat_command_priviledge`` to ``true`` will create the ``personal_log`` privilege to control use of that chat command. Admins will have this privilege it by default.
