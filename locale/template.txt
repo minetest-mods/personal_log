@@ -1,6 +1,7 @@
 # textdomain: personal_log
 
 
+
 ### init.lua ###
 
 #book title and author
@@ -13,6 +14,7 @@
 @1, @2 or @3=
 #for combining a location or date (@1) with the first few words of the log entry it's associated with (@2)
 @1: @2=
+Allows the player to access a personal log via chat command=
 #button label for returning to the personal log from import/export
 Back=
 #label on the category dropdown
@@ -42,6 +44,7 @@ Move Up=
 #button label
 New=
 Open personal log=
+Open your personal log=
 #item name for a physical representation of the personal log
 Personal Log=
 #label on the main log UI

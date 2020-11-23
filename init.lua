@@ -755,3 +755,33 @@ minetest.register_craft({
 })
 
 end
+
+--------------------------------------------------------------------------------------------------------
+-- Chat command
+
+local chat_command = minetest.settings:get_bool("personal_log_chat_command", false)
+local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_priviledge", false)
+
+if chat_command then
+
+local privs = nil
+if chat_command_priv then
+	minetest.register_privilege("personal_log", {
+        description =S("Allows the player to access a personal log via chat command"),
+        give_to_singleplayer = false,
+        give_to_admin = true,
+	})
+	privs = {personal_log=true}
+end
+
+minetest.register_chatcommand("log", {
+    description = S("Open your personal log"),
+	privs = privs,
+    func = function(name, param)
+		local user = minetest.get_player_by_name(name)
+		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+	end,
+})
+
+end
+
