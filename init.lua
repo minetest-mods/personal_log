@@ -792,7 +792,7 @@ end
 
 local add_entry_for_player = function(player_name, category, content, topic_content)
 	local state = get_state(player_name)
-	entry_index = state.entry_counts[category] + 1
+	local entry_index = state.entry_counts[category] + 1
 	state.entry_counts[category] = entry_index
 	state.entry_selected[category] = entry_index
 	save_entry(player_name, category, entry_index, content, topic_content)
