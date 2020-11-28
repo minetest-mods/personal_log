@@ -25,3 +25,13 @@ There's no limit to how many logs a player can write.
 Chat command access is disabled by default. If ``personal_log_chat_command`` is set to ``true`` then the ``/log`` chat command can be used to open the personal log.
 
 If you want to enable this for administrators but require players to craft an item, setting ``personal_log_chat_command_priviledge`` to ``true`` will create the ``personal_log`` privilege to control use of that chat command. Admins will have this privilege it by default.
+
+# API
+
+Other mods can automatically add log entries to players' personal logs using the following functions:
+
+``personal_log.add_location_entry(player_name, content, pos)`` -- Content is a string. If pos is not provided it defaults to the player's position.
+
+``personal_log.add_event_entry(player_name, content, event_date)`` -- Content is a string. Date should be in the format "%Y-%m-%d", if it is not provided it will default to the current date.
+			
+``personal_log.add_general_entry(player_name, content, general_topic)`` -- Both content and general_topic are strings.

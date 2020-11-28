@@ -1,3 +1,5 @@
+personal_log = {}
+
 local modname = minetest.get_current_modname()
 local modpath = minetest.get_modpath(modname)
 
@@ -785,3 +787,33 @@ minetest.register_chatcommand("log", {
 
 end
 
+---------------------------------------------------------------------------------------------------------
+-- API
+
+local add_entry_for_player = function(player_name, category, content, topic_content)
+	local state = get_state(player_name)
+	entry_index = state.entry_counts[category] + 1
+	state.entry_counts[category] = entry_index
+	state.entry_selected[category] = entry_index
+	save_entry(player_name, category, entry_index, content, topic_content)
+	save_state(player_name, state)
+end
+
+personal_log.add_location_entry = function(player_name, content, pos)
+	if pos == nil then
+		local player = minetest.get_player_by_name(player_name)
+		pos = player:get_pos()
+	end
+	add_entry_for_player(player_name, LOCATION_CATEGORY, content, minetest.pos_to_string(pos))
+end
+
+personal_log.add_event_entry = function(player_name, content, event_date)
+	if event_date == nil then
+		event_date = os.date("%Y-%m-%d")
+	end
+	add_entry_for_player(player_name, EVENT_CATEGORY, content, event_date)
+end			
+			
+personal_log.add_general_entry = function(player_name, content, general_topic)
+	add_entry_for_player(player_name, GENERAL_CATEGORY, content, general_topic)
+end
