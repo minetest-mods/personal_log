@@ -36,7 +36,7 @@ Import an entry from @1=Importar una entrada desde @1
 #a category of log entry
 Location=Ubicacion
 #tab text. Note: not a piece of wood. This is a log as in a record of items
-Log=Registro
+Log=Diario
 #button label
 Move Down=Mover Abajo
 #button label
@@ -56,10 +56,10 @@ Teleport=Teletransportar
 #tooltip explaining what the button that opens the log is for
 Your personal log for keeping track of what happens where=Su registro personal para realizar un seguimiento de lo que sucede donde
 # an item that log data can be imported from or exported to
-a GPS compass map=Mapa de Brujula
+a GPS compass map=Mapa de Brújula
 # an item that log data can be imported from or exported to
 a book=Libro
 # an item that log data can be imported from or exported to
-a calibrated compass=Brujula calibrada
+a calibrated compass=Brújula calibrada
 # an item that log data can be exported to
-a compass=una Brujula
+a compass=una Brújula
