@@ -23,11 +23,13 @@ local categories = {
 	S("Location"),
 	S("Event"),
 	S("General"),
+	S("People"),
 }
 
 local LOCATION_CATEGORY = 1
 local EVENT_CATEGORY = 2
 local GENERAL_CATEGORY = 3
+local PEOPLE_CATEGORY = 4
 
 -- used for determining if an item is a ccompass
 local ccompass_prefix = "ccompass:"
@@ -58,15 +60,27 @@ local function get_state(player_name)
 	local state = modstore:get(player_name .. "_state")
 	if state then
 		state = minetest.deserialize(state)
+	else
+		state = {category=LOCATION_CATEGORY, entry_selected={}, entry_counts={}}
 	end
-	if not state then
-		state = {category=LOCATION_CATEGORY, entry_selected={0,0,0}, entry_counts={0,0,0}}
+	-- ensure everything's initialized. If upgrading from an older version this fills in the missing category
+	for i, _ in ipairs(categories) do
+		state.entry_selected[i] = state.entry_selected[i] or 0
+		state.entry_counts[i] = state.entry_counts[i] or 0
 	end
 	return state
 end
 
 local function save_state(player_name, state)
 	modstore:set_string(player_name .. "_state", minetest.serialize(state))
+end
+
+local function get_bio(player_name)
+	return modstore:get(player_name .. "_bio") or ""
+end
+
+local function save_bio(player_name, bio)
+	modstore:set_string(player_name .. "_bio", bio)
 end
 
 local function save_entry(player_name, category_index, entry_index, entry_text, topic_text)
@@ -493,39 +507,61 @@ local function make_personal_log_formspec(player)
 	for i = 1, state.entry_counts[category_index] do
 		table.insert(entries, modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_content"))
 	end
-	local entry = ""
 	local entry_selected = state.entry_selected[category_index]
-	if entry_selected > 0 then
-		entry = entries[entry_selected]
-	end
+	local entry = entries[entry_selected] or ""
 
 	local topics = {}
 	for i = 1, state.entry_counts[category_index] do
 		table.insert(topics, modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_topic"))
 	end
 	local topic = ""
+	
+	-- special handling - we want to pre-insert blank entries for connected players that don't have entries yet
+	if category_index == PEOPLE_CATEGORY then
+		local players = minetest.get_connected_players()
+		for _, other_player in pairs(players) do
+			local other_player_name = other_player:get_player_name()
+			for _, existing_player_name in pairs(topics) do
+				if other_player_name == existing_player_name then
+					-- There's already an entry for this player
+					other_player_name = nil
+					break
+				end
+			end
+			if other_player_name then
+				table.insert(topics, other_player_name)
+			end
+		end
+	end
+
 	if entry_selected > 0 then
 		topic = topics[entry_selected]
 	end
 	
 	formspec[#formspec+1] = "tablecolumns[text;text]table[0.5,1.0;9,4.75;log_table;"
-	for i, entry in ipairs(entries) do
-		formspec[#formspec+1] = minetest.formspec_escape(truncate_string(topics[i], 30)) .. ","
-		formspec[#formspec+1] = minetest.formspec_escape(truncate_string(first_line(entry), 30))
+	for i, all_topic in ipairs(topics) do
+		formspec[#formspec+1] = minetest.formspec_escape(truncate_string(all_topic, 30)) .. ","
+		formspec[#formspec+1] = minetest.formspec_escape(truncate_string(first_line(entries[i] or ""), 30))
 		formspec[#formspec+1] = ","
 	end
 	formspec[#formspec] = ";"..entry_selected.."]" -- don't use +1, this overwrites the last ","
 	
+	local create_button = "button[2,0;2,0.5;create;"..S("New").."]"
+	
 	if category_index == GENERAL_CATEGORY then
 		formspec[#formspec+1] = "textarea[0.5,6.0;9,0.5;topic_data;;" .. minetest.formspec_escape(topic) .. "]"
 		formspec[#formspec+1] = "textarea[0.5,6.5;9,1.75;entry_data;;".. minetest.formspec_escape(entry) .."]"
+	elseif category_index == PEOPLE_CATEGORY then
+		formspec[#formspec+1] = "textarea[0.5,6.0;9,1.125;;;".. minetest.formspec_escape(get_bio(topic)) .."]" -- name should be empty if not set to self, to make it read-only
+		formspec[#formspec+1] = "textarea[0.5,7.125;9,1.125;entry_data;;".. minetest.formspec_escape(entry) .."]"
+		create_button = "" -- creation of new entries will be handled specially for people
 	else
 		formspec[#formspec+1] = "textarea[0.5,6.0;9,2.25;entry_data;;".. minetest.formspec_escape(entry) .."]"
 	end
 
 	formspec[#formspec+1] = "container[0.5,8.5]"
 		.."button[0,0;2,0.5;save;"..S("Save").."]"
-		.."button[2,0;2,0.5;create;"..S("New").."]"
+		..create_button
 		.."button[4.5,0;2,0.5;move_up;"..S("Move Up").."]"
 		.."button[4.5,0.75;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
@@ -816,4 +852,12 @@ end
 			
 personal_log.add_general_entry = function(player_name, content, general_topic)
 	add_entry_for_player(player_name, GENERAL_CATEGORY, content, general_topic)
+end
+
+personal_log.add_person_entry = function(player_name, content, person_name)
+	add_entry_for_player(player_name, PEOPLE_CATEGORY, content, person_name)
+end
+
+personal_log.set_biography = function(player_name, content)
+	save_bio(player_name, content)
 end
