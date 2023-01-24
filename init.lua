@@ -10,6 +10,7 @@ local unified_inventory_modpath = minetest.get_modpath("unified_inventory")
 local sfinv_buttons_modpath = minetest.get_modpath("sfinv_buttons")
 local sfinv_modpath = minetest.get_modpath("sfinv")
 local mcl_books_modpath = minetest.get_modpath("mcl_books")
+local mcl_formspec_modpath = minetest.get_modpath("mcl_formspec")
 
 local modstore = minetest.get_mod_storage()
 
@@ -47,7 +48,7 @@ elseif mcl_books_modpath then
 end
 
 local mcl_formspec_itemslot
-if mcl_formspec then
+if mcl_formspec_modpath then
 	mcl_formspec_itemslot = mcl_formspec.get_itemslot_bg
 end
 
