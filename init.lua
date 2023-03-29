@@ -789,7 +789,7 @@ minetest.register_craftitem("personal_log:book", {
 minetest.register_craft({
 	output = "personal_log:book",
 	type = "shapeless",
-	recipe = {{book_unwritten, book_unwritten}}
+	recipe = {book_unwritten, book_unwritten}
 })
 
 end
