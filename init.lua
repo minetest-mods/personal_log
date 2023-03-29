@@ -778,8 +778,7 @@ if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv
 				if not mcl_formspec_modpath then return nil end
 				local name = user:get_player_name()
 				minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-			end
-		end),
+			end),
 		on_place = ternary(not mcl_formspec_modpath, nil,
 			function(itemstack, user, pointed_thing)
 				if not user:get_player_control().sneak then 
@@ -790,8 +789,7 @@ if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv
 				end
 				local name = user:get_player_name()
 				minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-			end
-		end),
+			end),
 	})
 
 	minetest.register_craft({
