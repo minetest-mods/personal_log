@@ -759,41 +759,46 @@ local craftable_setting = minetest.settings:get_bool("personal_log_craftable_ite
 
 if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv_buttons_modpath) then
 
-minetest.register_craftitem("personal_log:book", {
-	description = S("Personal Log"),
-	inventory_image = "personal_log_open_book.png",
-	groups = {book = 1, flammable = 3},
-	on_use = function(itemstack, user, pointed_thing)
-		if mcl_formspec_modpath then return nil end
-		local name = user:get_player_name()
-		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-	end,
-	on_secondary_use = if not mcl_formspec_modpath then nil else
-		function(itemstack, user, pointed_thing)
-			if not mcl_formspec_modpath then return nil end
-			local name = user:get_player_name()
-			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-		end
-	end,
-	on_place = if not mcl_formspec_modpath then nil else
-		function(itemstack, user, pointed_thing)
-			if not user:get_player_control().sneak then 
-				local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
-				if new_stack then
-					return new_stack
-				end
-			end
-			local name = user:get_player_name()
-			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-		end
-	end,
-})
+--I don't like needing to do this...
+	local function ternary(condition, truevalue, falsevalue)
+		if condition then return true else return false end
+	end
 
-minetest.register_craft({
-	output = "personal_log:book",
-	type = "shapeless",
-	recipe = {book_unwritten, book_unwritten}
-})
+	minetest.register_craftitem("personal_log:book", {
+		description = S("Personal Log"),
+		inventory_image = "personal_log_open_book.png",
+		groups = {book = 1, flammable = 3},
+		on_use = function(itemstack, user, pointed_thing)
+			if mcl_formspec_modpath then return nil end
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end,
+		on_secondary_use = ternary(not mcl_formspec_modpath, nil,
+			function(itemstack, user, pointed_thing)
+				if not mcl_formspec_modpath then return nil end
+				local name = user:get_player_name()
+				minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+			end
+		end),
+		on_place = ternary(not mcl_formspec_modpath, nil,
+			function(itemstack, user, pointed_thing)
+				if not user:get_player_control().sneak then 
+					local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
+					if new_stack then
+						return new_stack
+					end
+				end
+				local name = user:get_player_name()
+				minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+			end
+		end),
+	})
+
+	minetest.register_craft({
+		output = "personal_log:book",
+		type = "shapeless",
+		recipe = {book_unwritten, book_unwritten}
+	})
 
 end
 
