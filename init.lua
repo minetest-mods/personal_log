@@ -18,6 +18,8 @@ local ccompass_recalibration_allowed = minetest.settings:get_bool("ccompass_reca
 local ccompass_restrict_target = minetest.settings:get_bool("ccompass_restrict_target", false)
 local ccompass_description_prefix = "^Compass to "
 
+local personal_log_teleport_privilege = minetest.settings:get_bool("personal_log_teleport_privilege", false)
+
 local S = minetest.get_translator(modname)
 
 local categories = {
@@ -50,6 +52,15 @@ end
 local mcl_formspec_itemslot
 if mcl_formspec_modpath then
 	mcl_formspec_itemslot = mcl_formspec.get_itemslot_bg
+end
+
+if personal_log_teleport_privilege then
+	minetest.register_privilege("personal_log_teleport", {
+        description =S("Allows the player to teleport using the personal log"),
+        give_to_singleplayer = false,
+        give_to_admin = true,
+	})
+	privs = {personal_log_teleport=true}
 end
 
 --------------------------------------------------------
@@ -530,8 +541,11 @@ local function make_personal_log_formspec(player)
 		.."button[4.5,0;2,0.5;move_up;"..S("Move Up").."]"
 		.."button[4.5,0.75;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
-
-	if category_index == LOCATION_CATEGORY and minetest.check_player_privs(player_name, "teleport") then
+	local can_teleport = false
+	if minetest.check_player_privs(player_name, "teleport") then
+		can_teleport = true
+	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport")
+	if category_index == LOCATION_CATEGORY and can_teleport then
 		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
@@ -818,3 +832,4 @@ end
 personal_log.add_general_entry = function(player_name, content, general_topic)
 	add_entry_for_player(player_name, GENERAL_CATEGORY, content, general_topic)
 end
+
