@@ -545,6 +545,8 @@ local function make_personal_log_formspec(player)
 	if minetest.check_player_privs(player_name, "teleport") then
 		can_teleport = true
 	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport")
+		can_teleport = true
+	end
 	if category_index == LOCATION_CATEGORY and can_teleport then
 		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
