@@ -650,7 +650,8 @@ local function on_player_receive_fields(player, fields, update_callback)
 	if fields.teleport
 		and category == LOCATION_CATEGORY
 		and valid_entry_selected
-		and minetest.check_player_privs(player_name, "teleport") then
+		and (minetest.check_player_privs(player_name, "teleport")
+		or (personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport"))) then
 		local pos_string = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
 		local pos = minetest.string_to_pos(pos_string)
 		if pos then
