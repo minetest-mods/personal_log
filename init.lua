@@ -763,7 +763,7 @@ end
 -- Chat command
 
 local chat_command = minetest.settings:get_bool("personal_log_chat_command", false)
-local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_priviledge", false)
+local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_privilege", false)
 
 if chat_command then
 
