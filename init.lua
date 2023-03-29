@@ -544,7 +544,7 @@ local function make_personal_log_formspec(player)
 	local can_teleport = false
 	if minetest.check_player_privs(player_name, "teleport") then
 		can_teleport = true
-	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport")
+	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport") then
 		can_teleport = true
 	end
 	if category_index == LOCATION_CATEGORY and can_teleport then
