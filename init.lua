@@ -768,21 +768,24 @@ minetest.register_craftitem("personal_log:book", {
 		local name = user:get_player_name()
 		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
 	end,
-	on_secondary_use = function(itemstack, user, pointed_thing)
-		if not mcl_formspec_modpath then return nil end
-		local name = user:get_player_name()
-		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+	on_secondary_use = if not mcl_formspec_modpath then nil else
+		function(itemstack, user, pointed_thing)
+			if not mcl_formspec_modpath then return nil end
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end
 	end,
-	on_secondary_use = function(itemstack, user, pointed_thing)
-		if not mcl_formspec_modpath then return nil end
-        if not user:get_player_control().sneak then 
-            local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
-            if new_stack then
-                return new_stack
-            end
-        end
-		local name = user:get_player_name()
-		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+	on_place = if not mcl_formspec_modpath then nil else
+		function(itemstack, user, pointed_thing)
+			if not user:get_player_control().sneak then 
+				local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
+				if new_stack then
+					return new_stack
+				end
+			end
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end
 	end,
 })
 
