@@ -63,6 +63,17 @@ if personal_log_teleport_privilege then
 	privs = {personal_log_teleport=true}
 end
 
+local function can_teleport(player)
+	local player_name = player:get_player_name()
+	if minetest.check_player_privs(player_name, "teleport") then
+		return true
+	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport") then
+		return true
+	else
+		return false
+	end
+end
+
 --------------------------------------------------------
 -- Data store
 
@@ -541,13 +552,7 @@ local function make_personal_log_formspec(player)
 		.."button[4.5,0;2,0.5;move_up;"..S("Move Up").."]"
 		.."button[4.5,0.75;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
-	local can_teleport = false
-	if minetest.check_player_privs(player_name, "teleport") then
-		can_teleport = true
-	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport") then
-		can_teleport = true
-	end
-	if category_index == LOCATION_CATEGORY and can_teleport then
+	if category_index == LOCATION_CATEGORY and can_teleport(player) then
 		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
@@ -650,8 +655,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 	if fields.teleport
 		and category == LOCATION_CATEGORY
 		and valid_entry_selected
-		and (minetest.check_player_privs(player_name, "teleport")
-		or (personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport"))) then
+		and (can_teleport(player)) then
 		local pos_string = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
 		local pos = minetest.string_to_pos(pos_string)
 		if pos then
@@ -759,7 +763,7 @@ local craftable_setting = minetest.settings:get_bool("personal_log_craftable_ite
 
 if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv_buttons_modpath) then
 
-	attributes = {
+	local attributes = {
 		description = S("Personal Log"),
 		inventory_image = "personal_log_open_book.png",
 		groups = {book = 1, flammable = 3},
