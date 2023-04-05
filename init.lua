@@ -786,7 +786,6 @@ if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv
 		end
 	else
 		attributes.on_use = function(itemstack, user, pointed_thing)
-			if mcl_formspec_modpath then return nil end
 			local name = user:get_player_name()
 			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
 		end
