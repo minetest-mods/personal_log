@@ -806,6 +806,7 @@ end
 
 local chat_command = minetest.settings:get_bool("personal_log_chat_command", false)
 local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_privilege", false)
+	or minetest.settings:get_bool("personal_log_chat_command_priviledge", false) -- backwards compat
 
 if chat_command then
 
