@@ -18,6 +18,8 @@ local ccompass_recalibration_allowed = minetest.settings:get_bool("ccompass_reca
 local ccompass_restrict_target = minetest.settings:get_bool("ccompass_restrict_target", false)
 local ccompass_description_prefix = "^Compass to "
 
+local personal_log_teleport_privilege = minetest.settings:get_bool("personal_log_teleport_privilege", false)
+
 local S = minetest.get_translator(modname)
 
 local categories = {
@@ -50,6 +52,26 @@ end
 local mcl_formspec_itemslot
 if mcl_formspec_modpath then
 	mcl_formspec_itemslot = mcl_formspec.get_itemslot_bg
+end
+
+if personal_log_teleport_privilege then
+	minetest.register_privilege("personal_log_teleport", {
+        description =S("Allows the player to teleport using the personal log"),
+        give_to_singleplayer = false,
+        give_to_admin = true,
+	})
+	privs = {personal_log_teleport=true}
+end
+
+local function can_teleport(player)
+	local player_name = player:get_player_name()
+	if minetest.check_player_privs(player_name, "teleport") then
+		return true
+	elseif personal_log_teleport_privilege and minetest.check_player_privs(player_name, "personal_log_teleport") then
+		return true
+	else
+		return false
+	end
 end
 
 --------------------------------------------------------
@@ -530,8 +552,7 @@ local function make_personal_log_formspec(player)
 		.."button[4.5,0;2,0.5;move_up;"..S("Move Up").."]"
 		.."button[4.5,0.75;2,0.5;move_down;"..S("Move Down").."]"
 		.."button[7,0;2,0.5;delete;"..S("Delete") .."]"
-
-	if category_index == LOCATION_CATEGORY and minetest.check_player_privs(player_name, "teleport") then
+	if category_index == LOCATION_CATEGORY and can_teleport(player) then
 		formspec[#formspec+1] = "button[7,0.75;2,0.5;teleport;"..S("Teleport") .."]"
 	end
 
@@ -634,7 +655,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 	if fields.teleport
 		and category == LOCATION_CATEGORY
 		and valid_entry_selected
-		and minetest.check_player_privs(player_name, "teleport") then
+		and (can_teleport(player)) then
 		local pos_string = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
 		local pos = minetest.string_to_pos(pos_string)
 		if pos then
@@ -742,20 +763,41 @@ local craftable_setting = minetest.settings:get_bool("personal_log_craftable_ite
 
 if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv_buttons_modpath) then
 
-minetest.register_craftitem("personal_log:book", {
-	description = S("Personal Log"),
-	inventory_image = "personal_log_open_book.png",
-	groups = {book = 1, flammable = 3},
-	on_use = function(itemstack, user, pointed_thing)
-		local name = user:get_player_name()
-		minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
-	end,
-})
+	local attributes = {
+		description = S("Personal Log"),
+		inventory_image = "personal_log_open_book.png",
+		groups = {book = 1, flammable = 3},
+	}
 
-minetest.register_craft({
-	output = "personal_log:book",
-	recipe = {{book_unwritten, book_unwritten}}
-})
+	if mcl_formspec_modpath then
+		attributes.on_secondary_use = function(itemstack, user, pointed_thing)
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end
+		attributes.on_place = function(itemstack, user, pointed_thing)
+			if not user:get_player_control().sneak then 
+				local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
+				if new_stack then
+					return new_stack
+				end
+			end
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end
+	else
+		attributes.on_use = function(itemstack, user, pointed_thing)
+			local name = user:get_player_name()
+			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
+		end
+	end
+
+	minetest.register_craftitem("personal_log:book", attributes)
+
+	minetest.register_craft({
+		output = "personal_log:book",
+		type = "shapeless",
+		recipe = {book_unwritten, book_unwritten}
+	})
 
 end
 
@@ -763,7 +805,8 @@ end
 -- Chat command
 
 local chat_command = minetest.settings:get_bool("personal_log_chat_command", false)
-local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_priviledge", false)
+local chat_command_priv = minetest.settings:get_bool("personal_log_chat_command_privilege", false)
+	or minetest.settings:get_bool("personal_log_chat_command_priviledge", false) -- backwards compat
 
 if chat_command then
 
@@ -818,3 +861,4 @@ end
 personal_log.add_general_entry = function(player_name, content, general_topic)
 	add_entry_for_player(player_name, GENERAL_CATEGORY, content, general_topic)
 end
+
