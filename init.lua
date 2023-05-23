@@ -339,7 +339,7 @@ local function ccompass_permitted_target(itemstack)
 		-- setting compasses when node type restriction is enabled.
 		return false
 	end
-	if not (itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix) then
+	if itemstack:get_name():sub(1,ccompass_prefix_length) ~= ccompass_prefix then
 		return false
 	end
 	local meta = itemstack:get_meta()
@@ -350,7 +350,7 @@ local function ccompass_permitted_target(itemstack)
 	return true	
 end
 local function ccompass_permitted_source(itemstack)
-	if not itemstack:get_name():sub(1,ccompass_prefix_length) == ccompass_prefix then
+	if itemstack:get_name():sub(1,ccompass_prefix_length) ~= ccompass_prefix then
 		return false
 	end
 	local meta = itemstack:get_meta()
