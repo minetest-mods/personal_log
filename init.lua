@@ -110,7 +110,7 @@ local function swap_entry(player_name, state, direction)
 	if next_index < 1 or next_index > state.entry_counts[category_index] then
 		return
 	end
-	
+
 	local current_topic = modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_index .. "_topic")
 	local current_content = modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. entry_index .. "_content")
 	local next_topic = modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. next_index .. "_topic")
@@ -189,10 +189,10 @@ local function write_book(player_name)
 		-- If it's a location or an event, add a little context to the title
 		topic = topic .. ": " .. first_line(content)
 	end
-	
+
 	local new_book = ItemStack(book_written)
 	local meta = new_book:get_meta()
-	
+
 	meta:set_string(author_meta_field, player_name)
 	meta:set_string("title", topic:sub(1, max_title_size))
 	meta:set_string("description", S("\"@1\" by @2", truncate_string(topic, short_title_size), player_name))
@@ -229,7 +229,7 @@ local function write_ccompass(player_name, old_compass)
 		return
 	end
 	local entry_selected = state.entry_selected[category]
-	
+
 	local topic = modstore:get_string(player_name .. "_category_" .. category .. "_entry_" .. entry_selected .. "_topic")
 	local pos = minetest.string_to_pos(topic)
 	if not pos then
@@ -271,7 +271,7 @@ local function read_book(itemstack, player_name)
 
 	local date_string = topic:match("^%d%d%d%d%-%d%d%-%d%d")
 	local pos_string = topic:match("^%(%-?[0-9]+,%-?[0-9]+,%-?[0-9]+%)")
-	
+
 	local category = GENERAL_CATEGORY
 	if date_string then
 		topic = date_string
@@ -280,7 +280,7 @@ local function read_book(itemstack, player_name)
 		topic = pos_string
 		category = LOCATION_CATEGORY
 	end
-	
+
 	local state = get_state(player_name)
 	local entry_index = state.entry_counts[category] + 1
 	state.entry_counts[category] = entry_index
@@ -295,7 +295,7 @@ local function read_ccompass(itemstack, player_name)
 	local prefix_start, prefix_end = content:find(ccompass_description_prefix)
 	if prefix_end then
 		content = content:sub(prefix_end+1)
-	end	
+	end
 	local state = get_state(player_name)
 	local entry_index = state.entry_counts[LOCATION_CATEGORY] + 1
 	state.entry_counts[LOCATION_CATEGORY] = entry_index
@@ -347,7 +347,7 @@ local function ccompass_permitted_target(itemstack)
 	if has_pos and not ccompass_recalibration_allowed then
 		return false
 	end
-	return true	
+	return true
 end
 local function ccompass_permitted_source(itemstack)
 	if itemstack:get_name():sub(1,ccompass_prefix_length) ~= ccompass_prefix then
@@ -371,7 +371,7 @@ local detached_callbacks = {
 			local player_name = player:get_player_name()
 			local state = get_state(player_name)
 			local category = state.category
-			if category == LOCATION_CATEGORY and 
+			if category == LOCATION_CATEGORY and
 				(stack_name == "compassgps:cgpsmap" or
 				ccompass_permitted_target(stack)) then
 				return 1
@@ -391,7 +391,7 @@ local detached_callbacks = {
 		local player_name = player:get_player_name()
 		if listname == "export_item" then
 			local new_item = write_item(player_name, stack)
-			inv:remove_item(listname, stack)		
+			inv:remove_item(listname, stack)
 			inv:add_item(listname, new_item)
 		elseif listname == "import_item" then
 			read_item(stack, player_name)
@@ -482,12 +482,12 @@ local function item_formspec(player_name, category, listname, topic)
 		.. "list[current_player;main;0,1.5;8,4;]"
 		.. "listring[]"
 		.. "button[3.5,5.5;1,1;back;"..S("Back").."]"
-	
+
 	if mcl_formspec_itemslot then
 		formspec = formspec .. mcl_formspec_itemslot(3.5, 0, 1, 1)
 			.. mcl_formspec_itemslot(0,1.5,8,4)
 	end
-		
+
 	return formspec
 end
 
@@ -499,9 +499,9 @@ local function make_personal_log_formspec(player)
 
 	local state = get_state(player_name)
 	local category_index = state.category
-	
+
 	ensure_detached_inventory(player_name)
-	
+
 	local formspec = {
 		"formspec_version[2]"
 		.."size[10,10]"
@@ -511,26 +511,20 @@ local function make_personal_log_formspec(player)
 		.. "label[0.5,0.5;"..S("Category:").."]"
 		.. "label[4.5,0.5;"..S("Personal Log Entries").."]"
 	}
-	
+
 	local entries = {}
 	for i = 1, state.entry_counts[category_index] do
 		table.insert(entries, modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_content"))
 	end
-	local entry = ""
 	local entry_selected = state.entry_selected[category_index]
-	if entry_selected > 0 then
-		entry = entries[entry_selected]
-	end
+	local entry = entries[entry_selected] or ""
 
 	local topics = {}
 	for i = 1, state.entry_counts[category_index] do
 		table.insert(topics, modstore:get_string(player_name .. "_category_" .. category_index .. "_entry_" .. i .. "_topic"))
 	end
-	local topic = ""
-	if entry_selected > 0 then
-		topic = topics[entry_selected]
-	end
-	
+	local topic = topics[entry_selected] or ""
+
 	formspec[#formspec+1] = "tablecolumns[text;text]table[0.5,1.0;9,4.75;log_table;"
 	for i, entry in ipairs(entries) do
 		formspec[#formspec+1] = minetest.formspec_escape(truncate_string(topics[i], 30)) .. ","
@@ -538,7 +532,7 @@ local function make_personal_log_formspec(player)
 		formspec[#formspec+1] = ","
 	end
 	formspec[#formspec] = ";"..entry_selected.."]" -- don't use +1, this overwrites the last ","
-	
+
 	if category_index == GENERAL_CATEGORY then
 		formspec[#formspec+1] = "textarea[0.5,6.0;9,0.5;topic_data;;" .. minetest.formspec_escape(topic) .. "]"
 		formspec[#formspec+1] = "textarea[0.5,6.5;9,1.75;entry_data;;".. minetest.formspec_escape(entry) .."]"
@@ -600,7 +594,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 			return
 		end
 	end
-	
+
 	if fields.save then
 		if category == GENERAL_CATEGORY then
 			save_entry(player_name, category, entry_selected, fields.entry_data, fields.topic_data)
@@ -610,7 +604,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 		update_callback(player)
 		return
 	end
-	
+
 	if fields.create then
 		local content = ""
 		local general_topic = ""
@@ -618,7 +612,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 			content = fields.entry_data
 			general_topic = fields.topic_data
 		end
-		
+
 		local entry_index = state.entry_counts[category] + 1
 		state.entry_counts[category] = entry_index
 		state.entry_selected[category] = entry_index
@@ -635,7 +629,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 		update_callback(player)
 		return
 	end
-	
+
 	if fields.move_up then
 		swap_entry(player_name, state, -1)
 		update_callback(player)
@@ -651,7 +645,7 @@ local function on_player_receive_fields(player, fields, update_callback)
 		update_callback(player)
 		return
 	end
-	
+
 	if fields.teleport
 		and category == LOCATION_CATEGORY
 		and valid_entry_selected
@@ -775,7 +769,7 @@ if craftable_setting or not (unified_inventory_modpath or sfinv_modpath or sfinv
 			minetest.show_formspec(name,"personal_log:root", make_personal_log_formspec(user))
 		end
 		attributes.on_place = function(itemstack, user, pointed_thing)
-			if not user:get_player_control().sneak then 
+			if not user:get_player_control().sneak then
 				local new_stack = mcl_util.call_on_rightclick(itemstack, user, pointed_thing)
 				if new_stack then
 					return new_stack
@@ -856,8 +850,8 @@ personal_log.add_event_entry = function(player_name, content, event_date)
 		event_date = os.date("%Y-%m-%d")
 	end
 	add_entry_for_player(player_name, EVENT_CATEGORY, content, event_date)
-end			
-			
+end
+
 personal_log.add_general_entry = function(player_name, content, general_topic)
 	add_entry_for_player(player_name, GENERAL_CATEGORY, content, general_topic)
 end
